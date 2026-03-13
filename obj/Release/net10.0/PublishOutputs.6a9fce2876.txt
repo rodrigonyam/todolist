@@ -1,16 +1,6 @@
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\TodoList.exe
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\publish\web.config
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\web.config
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\publish\web.config
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\data\tasks.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\data\tasks.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\publish\data\tasks.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\publish\TodoList.deps.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\publish\TodoList.runtimeconfig.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\publish\TodoList.staticwebassets.endpoints.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\TodoList.deps.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\TodoList.runtimeconfig.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\deploy-output\TodoList.staticwebassets.endpoints.json
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\publish\data\tasks.json
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\publish\TodoList.deps.json
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\deploy-output\publish\TodoList.runtimeconfig.json

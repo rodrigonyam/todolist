@@ -33,13 +33,3 @@ C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Rel
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\publish\TodoList.deps.json
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\publish\TodoList.runtimeconfig.json
 C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\publish\TodoList.staticwebassets.endpoints.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\publish\web.config
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\web.config
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\data\tasks.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\publish\data\tasks.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\publish\TodoList.deps.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\publish\TodoList.runtimeconfig.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\publish\TodoList.staticwebassets.endpoints.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\TodoList.deps.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\TodoList.runtimeconfig.json
-C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\bin\Release\net10.0\deploy-output\TodoList.staticwebassets.endpoints.json

@@ -1,280 +1,227 @@
 using System.Text.Json;
-using System.Linq;
+using System.Text.Json.Serialization;
 
-// Simple console to-do list that stores tasks in data/tasks.json next to the app
-internal static class Program
+var builder = WebApplication.CreateBuilder(args);
+
+var dataPath = Path.Combine(AppContext.BaseDirectory, "data", "tasks.json");
+builder.Services.AddSingleton<ITaskStore>(_ => new JsonTaskStore(dataPath));
+
+var app = builder.Build();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.MapGet("/api/tasks", async (ITaskStore store) => Results.Ok(await store.GetAllAsync()));
+
+app.MapPost("/api/tasks", async (TaskCreateRequest request, ITaskStore store) =>
 {
-    private const string DataDirectory = "data";
-    private const string FileName = "tasks.json";
+    if (string.IsNullOrWhiteSpace(request.Title))
+    {
+        return Results.BadRequest("Title is required.");
+    }
+
+    var created = await store.AddAsync(request.Title.Trim(), request.ReminderAtUtc);
+    return Results.Created($"/api/tasks/{created.Id}", created);
+});
+
+app.MapPut("/api/tasks/{id:int}", async (int id, TaskUpdateRequest request, ITaskStore store) =>
+{
+    var updated = await store.UpdateAsync(id, request);
+    return updated is null ? Results.NotFound() : Results.Ok(updated);
+});
+
+app.MapDelete("/api/tasks/{id:int}", async (int id, ITaskStore store) =>
+{
+    var deleted = await store.DeleteAsync(id);
+    return deleted ? Results.NoContent() : Results.NotFound();
+});
+
+app.Run();
+
+public record TaskItem
+{
+    public int Id { get; init; }
+    public string Title { get; set; } = string.Empty;
+    public bool IsDone { get; set; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime? ReminderAtUtc { get; set; }
+}
+
+public sealed record TaskCreateRequest
+{
+    public string Title { get; init; } = string.Empty;
+    public DateTime? ReminderAtUtc { get; init; }
+}
+
+public sealed record TaskUpdateRequest
+{
+    public string? Title { get; init; }
+    public bool? IsDone { get; init; }
+    public DateTime? ReminderAtUtc { get; init; }
+    public bool? ClearReminder { get; init; }
+}
+
+public interface ITaskStore
+{
+    Task<List<TaskItem>> GetAllAsync();
+    Task<TaskItem?> GetByIdAsync(int id);
+    Task<TaskItem> AddAsync(string title, DateTime? reminderAtUtc);
+    Task<TaskItem?> UpdateAsync(int id, TaskUpdateRequest request);
+    Task<bool> DeleteAsync(int id);
+}
+
+public sealed class JsonTaskStore : ITaskStore
+{
+    private readonly string _path;
+    private readonly SemaphoreSlim _mutex = new(1, 1);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
-    private static void Main()
+    public JsonTaskStore(string path)
     {
-        var storagePath = Path.Combine(Directory.GetCurrentDirectory(), DataDirectory, FileName);
-        var tasks = LoadTasks(storagePath);
+        _path = path;
+    }
 
-        while (true)
+    public async Task<List<TaskItem>> GetAllAsync()
+    {
+        await _mutex.WaitAsync();
+        try
         {
-            Console.Clear();
-            HandleDueReminders(storagePath, tasks);
-            Console.WriteLine("=== To-Do List ===");
-            ListTasks(tasks);
-
-            Console.WriteLine();
-            Console.WriteLine("Choose an action:");
-            Console.WriteLine("1) Add task");
-            Console.WriteLine("2) Edit task");
-            Console.WriteLine("3) Delete task");
-            Console.WriteLine("4) Toggle done");
-            Console.WriteLine("5) Set/Clear reminder");
-            Console.WriteLine("6) Exit");
-            Console.Write("Selection: ");
-
-            var choice = Console.ReadLine();
-            switch (choice)
-            {
-                case "1":
-                    AddTask(tasks);
-                    SaveTasks(storagePath, tasks);
-                    break;
-                case "2":
-                    EditTask(tasks);
-                    SaveTasks(storagePath, tasks);
-                    break;
-                case "3":
-                    DeleteTask(tasks);
-                    SaveTasks(storagePath, tasks);
-                    break;
-                case "4":
-                    ToggleTask(tasks);
-                    SaveTasks(storagePath, tasks);
-                    break;
-                case "5":
-                    SetOrClearReminder(tasks);
-                    SaveTasks(storagePath, tasks);
-                    break;
-                case "6":
-                    return;
-                default:
-                    Console.WriteLine("Invalid choice. Press Enter to continue...");
-                    Console.ReadLine();
-                    break;
-            }
+            return await LoadAsync();
+        }
+        finally
+        {
+            _mutex.Release();
         }
     }
 
-    private static List<TaskItem> LoadTasks(string path)
+    public async Task<TaskItem?> GetByIdAsync(int id)
     {
+        await _mutex.WaitAsync();
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(path) ?? DataDirectory);
-            if (!File.Exists(path))
+            var tasks = await LoadAsync();
+            return tasks.FirstOrDefault(t => t.Id == id);
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
+
+    public async Task<TaskItem> AddAsync(string title, DateTime? reminderAtUtc)
+    {
+        await _mutex.WaitAsync();
+        try
+        {
+            var tasks = await LoadAsync();
+            var nextId = tasks.Count == 0 ? 1 : tasks.Max(t => t.Id) + 1;
+            var item = new TaskItem
             {
-                return new List<TaskItem>();
+                Id = nextId,
+                Title = title,
+                IsDone = false,
+                CreatedAt = DateTime.UtcNow,
+                ReminderAtUtc = reminderAtUtc
+            };
+            tasks.Add(item);
+            await SaveAsync(tasks);
+            return item;
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
+
+    public async Task<TaskItem?> UpdateAsync(int id, TaskUpdateRequest request)
+    {
+        await _mutex.WaitAsync();
+        try
+        {
+            var tasks = await LoadAsync();
+            var task = tasks.FirstOrDefault(t => t.Id == id);
+            if (task == null)
+            {
+                return null;
             }
 
-            var json = File.ReadAllText(path);
-            return string.IsNullOrWhiteSpace(json)
-                ? new List<TaskItem>()
-                : JsonSerializer.Deserialize<List<TaskItem>>(json, JsonOptions) ?? new List<TaskItem>();
+            if (!string.IsNullOrWhiteSpace(request.Title))
+            {
+                task.Title = request.Title.Trim();
+            }
+
+            if (request.IsDone.HasValue)
+            {
+                task.IsDone = request.IsDone.Value;
+            }
+
+            if (request.ClearReminder == true)
+            {
+                task.ReminderAtUtc = null;
+            }
+            else if (request.ReminderAtUtc.HasValue)
+            {
+                task.ReminderAtUtc = request.ReminderAtUtc.Value;
+            }
+
+            await SaveAsync(tasks);
+            return task;
         }
-        catch (Exception ex)
+        finally
         {
-            Console.WriteLine($"Failed to load tasks: {ex.Message}");
-            Console.WriteLine("Starting with an empty list. Press Enter to continue...");
-            Console.ReadLine();
+            _mutex.Release();
+        }
+    }
+
+    public async Task<bool> DeleteAsync(int id)
+    {
+        await _mutex.WaitAsync();
+        try
+        {
+            var tasks = await LoadAsync();
+            var removed = tasks.RemoveAll(t => t.Id == id) > 0;
+            if (removed)
+            {
+                await SaveAsync(tasks);
+            }
+            return removed;
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
+
+    private async Task<List<TaskItem>> LoadAsync()
+    {
+        var directory = Path.GetDirectoryName(_path) ?? "data";
+        Directory.CreateDirectory(directory);
+
+        if (!File.Exists(_path))
+        {
             return new List<TaskItem>();
         }
+
+        var json = await File.ReadAllTextAsync(_path);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new List<TaskItem>();
+        }
+
+        return JsonSerializer.Deserialize<List<TaskItem>>(json, JsonOptions) ?? new List<TaskItem>();
     }
 
-    private static void SaveTasks(string path, List<TaskItem> tasks)
+    private async Task SaveAsync(List<TaskItem> tasks)
     {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path) ?? DataDirectory);
-            File.WriteAllText(path, JsonSerializer.Serialize(tasks, JsonOptions));
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to save tasks: {ex.Message}");
-            Console.WriteLine("Press Enter to continue...");
-            Console.ReadLine();
-        }
-    }
-
-    private static void ListTasks(List<TaskItem> tasks)
-    {
-        if (tasks.Count == 0)
-        {
-            Console.WriteLine("No tasks yet. Add one!");
-            return;
-        }
-
-        foreach (var task in tasks.OrderBy(t => t.Id))
-        {
-            var status = task.IsDone ? "[x]" : "[ ]";
-            var reminderText = task.ReminderAtUtc.HasValue
-                ? $" (reminder: {task.ReminderAtUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm})"
-                : string.Empty;
-
-            Console.WriteLine($"{task.Id,3} {status} {task.Title}{reminderText}");
-        }
-    }
-
-    private static void AddTask(List<TaskItem> tasks)
-    {
-        Console.Write("Enter task description: ");
-        var title = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            Console.WriteLine("Task not added (empty input). Press Enter to continue...");
-            Console.ReadLine();
-            return;
-        }
-
-        var nextId = tasks.Count == 0 ? 1 : tasks.Max(t => t.Id) + 1;
-        tasks.Add(new TaskItem
-        {
-            Id = nextId,
-            Title = title.Trim(),
-            IsDone = false,
-            CreatedAt = DateTime.UtcNow
-        });
-    }
-
-    private static void EditTask(List<TaskItem> tasks)
-    {
-        var task = PromptForTask(tasks, "edit");
-        if (task == null)
-        {
-            return;
-        }
-
-        Console.Write("Enter new description (leave blank to keep current): ");
-        var newTitle = Console.ReadLine();
-        if (!string.IsNullOrWhiteSpace(newTitle))
-        {
-            task.Title = newTitle.Trim();
-        }
-    }
-
-    private static void DeleteTask(List<TaskItem> tasks)
-    {
-        var task = PromptForTask(tasks, "delete");
-        if (task == null)
-        {
-            return;
-        }
-
-        tasks.Remove(task);
-    }
-
-    private static void ToggleTask(List<TaskItem> tasks)
-    {
-        var task = PromptForTask(tasks, "toggle");
-        if (task == null)
-        {
-            return;
-        }
-
-        task.IsDone = !task.IsDone;
-    }
-
-    private static void SetOrClearReminder(List<TaskItem> tasks)
-    {
-        var task = PromptForTask(tasks, "set/clear reminder for");
-        if (task == null)
-        {
-            return;
-        }
-
-        Console.WriteLine("Enter reminder time (local) in format yyyy-MM-dd HH:mm, or leave blank to clear:");
-        var input = Console.ReadLine();
-
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            task.ReminderAtUtc = null;
-            Console.WriteLine("Reminder cleared. Press Enter to continue...");
-            Console.ReadLine();
-            return;
-        }
-
-        if (DateTime.TryParse(input, out var localTime))
-        {
-            var utc = DateTime.SpecifyKind(localTime, DateTimeKind.Local).ToUniversalTime();
-            task.ReminderAtUtc = utc;
-            Console.WriteLine("Reminder set. Press Enter to continue...");
-            Console.ReadLine();
-        }
-        else
-        {
-            Console.WriteLine("Could not parse that time. Press Enter to continue...");
-            Console.ReadLine();
-        }
-    }
-
-    private static void HandleDueReminders(string storagePath, List<TaskItem> tasks)
-    {
-        var nowUtc = DateTime.UtcNow;
-        var due = tasks.Where(t => !t.IsDone && t.ReminderAtUtc.HasValue && t.ReminderAtUtc.Value <= nowUtc).ToList();
-        if (due.Count == 0)
-        {
-            return;
-        }
-
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("-- Reminders --");
-        foreach (var task in due)
-        {
-            Console.WriteLine($"Reminder: {task.Title} (was set for {task.ReminderAtUtc!.Value.ToLocalTime():yyyy-MM-dd HH:mm})");
-            task.ReminderAtUtc = null; // clear after showing so it does not repeat every loop
-        }
-        Console.ResetColor();
-        SaveTasks(storagePath, tasks);
-        Console.WriteLine();
-        Console.WriteLine("Press Enter to continue...");
-        Console.ReadLine();
-    }
-
-    private static TaskItem? PromptForTask(List<TaskItem> tasks, string action)
-    {
-        if (tasks.Count == 0)
-        {
-            Console.WriteLine("No tasks available. Press Enter to continue...");
-            Console.ReadLine();
-            return null;
-        }
-
-        Console.Write($"Enter task id to {action}: ");
-        var input = Console.ReadLine();
-        if (!int.TryParse(input, out var id))
-        {
-            Console.WriteLine("Invalid number. Press Enter to continue...");
-            Console.ReadLine();
-            return null;
-        }
-
-        var task = tasks.FirstOrDefault(t => t.Id == id);
-        if (task == null)
-        {
-            Console.WriteLine("Task not found. Press Enter to continue...");
-            Console.ReadLine();
-            return null;
-        }
-
-        return task;
-    }
-
-    private sealed class TaskItem
-    {
-        public int Id { get; init; }
-        public string Title { get; set; } = string.Empty;
-        public bool IsDone { get; set; }
-        public DateTime CreatedAt { get; init; }
-        public DateTime? ReminderAtUtc { get; set; }
+        var directory = Path.GetDirectoryName(_path) ?? "data";
+        Directory.CreateDirectory(directory);
+        var json = JsonSerializer.Serialize(tasks, JsonOptions);
+        await File.WriteAllTextAsync(_path, json);
     }
 }

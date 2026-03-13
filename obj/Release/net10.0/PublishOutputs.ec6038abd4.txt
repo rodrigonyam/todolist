@@ -1,0 +1,6 @@
+C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\publish\TodoList.exe
+C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\publish\data\tasks.json
+C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\publish\TodoList.dll
+C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\publish\TodoList.deps.json
+C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\publish\TodoList.runtimeconfig.json
+C:\Users\rodog\OneDrive\Desktop\Stillstanding\seniorsonsteroids\todolist\publish\TodoList.pdb
